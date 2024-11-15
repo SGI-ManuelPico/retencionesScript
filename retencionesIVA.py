@@ -1,6 +1,7 @@
 import pandas as pd
 from db import ConexionDB
 import numpy as np
+from util import validar_datos
 
 def insertarRetencionesIVA(ruta_excel):
     """
@@ -33,12 +34,23 @@ def insertarRetencionesIVA(ruta_excel):
 
     try:
         datos_excel = pd.read_excel(ruta_excel)
+
+        # Validar los datos antes de insertarlos en la base de datos
+        filas_validas, errores = validar_datos(datos_excel)
+
+        if errores:
+            print("Errores encontrados en los datos:")
+            for error in errores:
+                print(error)
+            return False # Detener la inserción si hay errores
+
+        # Insertar los datos validados en la base de datos
         cursor = conexion.cursor()
         query = """
             INSERT INTO retencionesiva (nit, detalle, ciudad, bimestre, year, montoOrigen, baseRetencion, valorRetenido, porcentaje)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
-        for _, fila in datos_excel.iterrows():
+        for _, fila in filas_validas.iterrows():
             
             valores = tuple(
                 None if pd.isna(fila[col]) else fila[col]

@@ -1,5 +1,6 @@
 import pandas as pd
 from db import ConexionDB
+from util import validar_datos
 
 def insertarRetencionesICA(ruta_excel):
     """
@@ -34,12 +35,19 @@ def insertarRetencionesICA(ruta_excel):
 
     try:
         datos_excel = pd.read_excel(ruta_excel)
+        filas_validas, errores = validar_datos(datos_excel)
+        
+        if errores:
+            print("Errores en los datos:")
+            for error in errores:
+                print(error)
+            return False  # Detener la inserción si hay errores en los datos
         cursor = conexion.cursor()
         query = """
             INSERT INTO retencionesica (nit, detalle, ciudad, bimestre, year, montoOrigen, valorRetenido, porcentaje)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
-        for _, fila in datos_excel.iterrows():
+        for _, fila in filas_validas.iterrows():
             valores = (
                 fila["nit_proveedor"],
                 fila["detalle"],

@@ -1,47 +1,48 @@
 from cryptography.fernet import Fernet
+import os
 import json
+from datetime import datetime
 
-# Rutas de los archivos
-ruta_clave = "audit_key.key"
-ruta_log_cifrado = "audit_log.txt"
-ruta_log_descifrado = "audit_log_legible.txt"
+class LocalAuditTrail:
+    def __init__(self, log_file="audit_log.txt", key_file="audit_key.key"):
+        self.log_file = log_file
+        self.key_file = key_file
+        self.key = self.load_or_generate_key()
+        self.fernet = Fernet(self.key)
 
-def descifrar_y_guardar_log():
-    """
-    Descifra el contenido del log y lo guarda en un archivo legible con el encoding adecuado.
-    """
-    try:
-        # Leer la clave de cifrado
-        with open(ruta_clave, "rb") as archivo_clave:
-            clave = archivo_clave.read()
-    except FileNotFoundError:
-        print("El archivo de clave no se encontró.")
-        return
+    def load_or_generate_key(self):
+        """Genera o carga la clave de encriptación."""
+        if os.path.exists(self.key_file):
+            with open(self.key_file, "rb") as key_file:
+                return key_file.read()
+        else:
+            key = Fernet.generate_key()
+            with open(self.key_file, "wb") as key_file:
+                key_file.write(key)
+            return key
 
-    fernet = Fernet(clave)
+    def log_action(self, user, action):
+        """Registra una acción."""
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = {"user": user, "action": action, "timestamp": timestamp}
 
-    try:
-        # Leer el contenido cifrado del log
-        with open(ruta_log_cifrado, "rb") as archivo_log:
-            contenido_cifrado = archivo_log.read()
+        # Encripta la entrada del log
+        encrypted_entry = self.fernet.encrypt(json.dumps(log_entry).encode())
 
-        # Descifrar el contenido
-        contenido_descifrado = fernet.decrypt(contenido_cifrado).decode("utf-8-sig")
-        print("Contenido del log descifrado:")
-        print(contenido_descifrado)
+        # Guarda la entrada en el archivo
+        with open(self.log_file, "ab") as log:
+            log.write(encrypted_entry + b"\n")
 
-        # Convertir el contenido descifrado a un JSON para garantizar que sea legible
-        contenido_json = json.loads(contenido_descifrado)
+    def read_logs(self):
+        """Desencripta y muestra los logs almacenados."""
+        if not os.path.exists(self.log_file):
+            print("No hay registros de auditoría.")
+            return
 
-        # Guardar el contenido descifrado en un archivo legible con tildes
-        with open(ruta_log_descifrado, "w", encoding="utf-8") as archivo_legible:
-            json.dump(contenido_json, archivo_legible, ensure_ascii=False, indent=4)
-
-        print(f"El log descifrado se guardó en '{ruta_log_descifrado}'.")
-    except FileNotFoundError:
-        print("El archivo de log cifrado no se encontró.")
-    except Exception as e:
-        print(f"Error al descifrar el contenido: {e}")
-
-# Ejecutar la función
-descifrar_y_guardar_log()
+        with open(self.log_file, "rb") as log:
+            for line in log:
+                try:
+                    decrypted_entry = self.fernet.decrypt(line.strip()).decode()
+                    print(json.loads(decrypted_entry))
+                except Exception as e:
+                    print(f"Error al leer una entrada del log: {e}")

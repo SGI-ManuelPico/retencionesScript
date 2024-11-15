@@ -1,4 +1,5 @@
 from cryptography.fernet import Fernet
+import json
 
 # Rutas de los archivos
 ruta_clave = "audit_key.key"
@@ -29,9 +30,12 @@ def descifrar_y_guardar_log():
         print("Contenido del log descifrado:")
         print(contenido_descifrado)
 
-        # Guardar el contenido descifrado en un archivo legible
-        with open(ruta_log_descifrado, "w", encoding="utf-8-sig") as archivo_legible:
-            archivo_legible.write(contenido_descifrado)
+        # Convertir el contenido descifrado a un JSON para garantizar que sea legible
+        contenido_json = json.loads(contenido_descifrado)
+
+        # Guardar el contenido descifrado en un archivo legible con tildes
+        with open(ruta_log_descifrado, "w", encoding="utf-8") as archivo_legible:
+            json.dump(contenido_json, archivo_legible, ensure_ascii=False, indent=4)
 
         print(f"El log descifrado se guardó en '{ruta_log_descifrado}'.")
     except FileNotFoundError:

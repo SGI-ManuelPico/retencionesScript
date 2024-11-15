@@ -1,23 +1,22 @@
 from cx_Freeze import setup, Executable
 
-# Include additional files if necessary
-include_files = []  # Add any files like Excel templates here, e.g., ["template.xlsx"]
+include_files = [] 
 
-# Dependencies
+# Dependencias
 build_exe_options = {
     "packages": ["os", "pandas", "tkinter", "openpyxl", "tabulate", "mysql.connector"],
     "include_files": include_files,
-    "excludes": ["matplotlib"],  # Exclude unnecessary libraries if not used
+    "excludes": ["matplotlib"],  
 }
 
-# Define the executable
+# Definir el ejecutable
 target = Executable(
-    script="main.py",  # Replace with your main script
-    base="Win32GUI",  # Use "Win32GUI" to hide the console; omit this for a console app
-    target_name="RetencionesApp.exe",  # Name of the output executable
+    script="main.py", 
+    base="Win32GUI",  
+    target_name="RetencionesApp.exe", 
 )
 
-# Setup
+# Configuración
 setup(
     name="RetencionesApp",
     version="1.0",

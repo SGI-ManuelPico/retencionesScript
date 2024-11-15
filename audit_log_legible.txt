@@ -1,0 +1,5 @@
+{
+    "user": "Login",
+    "action": "Usuario 'desarrollo.software3@sgiltda.com' inició sesión correctamente",
+    "timestamp": "2024-11-15 15:01:09"
+}

@@ -6,33 +6,34 @@ import bcrypt
 import os
 from cryptography.fernet import Fernet
 import json
+from audit_trail import LocalAuditTrail
+
 
 class LoginGUI:
     def __init__(self):
+        self.audit_trail = LocalAuditTrail()
         self.window = tk.Tk()
         self.window.title("Login")
         self.window.geometry("300x250")
         self.window.configure(bg="#f4f4f4")
 
-        self.key = self.load_encryption_key()  # Load encryption key
+        self.key = self.load_encryption_key() 
         self.credentials_file = "credentials.json"
 
-        # Load UI components
         self.create_widgets()
         self.check_remembered_credentials()
 
     def create_widgets(self):
-        # Username Label and Entry
+
         tk.Label(self.window, text="Usuario:", bg="#f4f4f4", font=("Arial", 12)).pack(pady=10)
         self.username_entry = tk.Entry(self.window, font=("Arial", 12), width=25)
         self.username_entry.pack()
 
-        # Password Label and Entry
+
         tk.Label(self.window, text="Contraseña:", bg="#f4f4f4", font=("Arial", 12)).pack(pady=10)
         self.password_entry = tk.Entry(self.window, show="*", font=("Arial", 12), width=25)
         self.password_entry.pack()
 
-        # Remember Me Checkbox
         self.remember_me_var = tk.BooleanVar()
         tk.Checkbutton(
             self.window,
@@ -42,7 +43,7 @@ class LoginGUI:
             font=("Arial", 10)
         ).pack(pady=10)
 
-        # Login Button
+        # Login
         self.login_button = tk.Button(
             self.window,
             text="Iniciar sesión",
@@ -67,12 +68,12 @@ class LoginGUI:
     def load_encryption_key(self):
         key_file = "encryption.key"
         if not os.path.exists(key_file):
-            # Generate a new encryption key if not exists
+
             key = Fernet.generate_key()
             with open(key_file, "wb") as key_file:
                 key_file.write(key)
         else:
-            # Load the existing encryption key
+
             with open(key_file, "rb") as key_file:
                 key = key_file.read()
         return key
@@ -111,6 +112,7 @@ class LoginGUI:
         conexion = ConexionDB(**db_config_test).establecerConexion()
 
         if not conexion:
+            self.audit_trail.log_action("Login", f"Error al conectar a la base de datos para el usuario '{username}'")
             messagebox.showerror("Error", "No se pudo conectar a la base de datos.")
             return
 
@@ -126,14 +128,18 @@ class LoginGUI:
                     if self.remember_me_var.get():
                         self.save_credentials(username, password)
                     messagebox.showinfo("Éxito", "Inicio de sesión exitoso")
+                    self.audit_trail.log_action("Login", f"Usuario '{username}' inició sesión correctamente")
                     self.window.destroy()
-                    AppGUI().run()
+                    AppGUI(username, self.audit_trail).run()
                 else:
+                    self.audit_trail.log_action("Login", f"Usuario '{username}' ingresó una contraseña incorrecta")
                     messagebox.showerror("Error", "Contraseña incorrecta")
             else:
+                self.audit_trail.log_action("Login", f"Usuario '{username}' no encontrado en la base de datos")
                 messagebox.showerror("Error", "Usuario no encontrado")
 
         except Exception as e:
+            self.audit_trail.log_action("Login", f"Error en la autenticación para el usuario '{username}': {e}")
             messagebox.showerror("Error", f"Error al consultar la base de datos: {e}")
         finally:
             conexion.close()

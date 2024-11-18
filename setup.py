@@ -1,22 +1,38 @@
 from cx_Freeze import setup, Executable
 
-include_files = [] 
+# Archivos adicionales necesarios
+include_files = [
+    "audit_key.key", 
+    "audit_log.txt", 
+    "credentials.json", 
+]
 
-# Dependencias
+# Dependencias y configuraciones
 build_exe_options = {
-    "packages": ["os", "pandas", "tkinter", "openpyxl", "tabulate", "mysql.connector"],
+    "packages": [
+        "os", 
+        "pandas", 
+        "tkinter", 
+        "openpyxl", 
+        "tabulate", 
+        "mysql.connector", 
+        "bcrypt", 
+        "cryptography.fernet",
+        "time",
+    ],
     "include_files": include_files,
     "excludes": ["matplotlib"],  
 }
 
-# Definir el ejecutable
+# Configuración del ejecutable
 target = Executable(
     script="main.py", 
     base="Win32GUI",  
     target_name="RetencionesApp.exe", 
+    icon=None,  
 )
 
-# Configuración
+# Configuración de setup
 setup(
     name="RetencionesApp",
     version="1.0",

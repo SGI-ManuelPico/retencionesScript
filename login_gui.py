@@ -107,7 +107,7 @@ class LoginGUI:
             "host": "localhost",
             "user": "root",
             "password": "12345678",
-            "database": "test"
+            "database": "test2"
         }
         conexion = ConexionDB(**db_config_test).establecerConexion()
 

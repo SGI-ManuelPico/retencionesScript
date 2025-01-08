@@ -20,10 +20,10 @@ class AppGUI:
 
         # Configuración de la base de datos
         db_config = {
-            "host": "localhost",
-            "user": "root",
-            "password": "12345678",
-            "database": "test2"
+            "host": "srv1182.hstgr.io",
+            "user": "u438914854_contabilidad",
+            "password": "RI8aiyvVRs4MY80",
+            "database": "u438914854_contabilidad"
         }
 
         # Instancias de las clases de inserción

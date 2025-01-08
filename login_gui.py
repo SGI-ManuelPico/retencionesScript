@@ -100,14 +100,14 @@ class LoginGUI:
         db_config = {
             "host": "srv1182.hstgr.io",
             "user": "u438914854_contabilidad",
-            "password": "RI8aiyVVRs4MY80",
+            "password": "RI8aiyvVRs4MY80",
             "database": "u438914854_contabilidad"
         }
         db_config_test = {
             "host": "localhost",
             "user": "root",
             "password": "12345678",
-            "database": "test2"
+            "database": "test"
         }
         conexion = ConexionDB(**db_config_test).establecerConexion()
 

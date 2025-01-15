@@ -16,6 +16,8 @@ class LoginGUI:
         self.window.title("Login")
         self.window.geometry("300x250")
         self.window.configure(bg="#f4f4f4")
+        self.fernet_key = b"GJw2x2Dic6T3MWAv5a_vNDxkxJRjh04Ku4O_OtwBiNs=" 
+        self.fernet = Fernet(self.fernet_key)
 
         self.key = self.load_encryption_key() 
         self.credentials_file = "credentials.json"
@@ -103,28 +105,30 @@ class LoginGUI:
             "password": "RI8aiyvVRs4MY80",
             "database": "u438914854_contabilidad"
         }
-        db_config_test = {
-            "host": "localhost",
-            "user": "root",
-            "password": "12345678",
-            "database": "test"
-        }
-        conexion = ConexionDB(**db_config_test).establecerConexion()
 
-        if not conexion:
-            self.audit_trail.log_action("Login", f"Error al conectar a la base de datos para el usuario '{username}'")
-            messagebox.showerror("Error", "No se pudo conectar a la base de datos.")
-            return
-
+        conexion = ConexionDB(**db_config).establecerConexion() 
         try:
             cursor = conexion.cursor()
-            query = "SELECT password FROM usuario WHERE correo = %s"
+
+            # Toma la contraseña encriptada de la base de datos
+            query = "SELECT password FROM usuarios WHERE correo = %s"
             cursor.execute(query, (username,))
             result = cursor.fetchone()
 
-            if result:
-                stored_hashed_password = result[0]
-                if bcrypt.checkpw(password.encode('utf-8'), stored_hashed_password.encode('utf-8')):
+            if not result:
+                self.audit_trail.log_action("Login", f"Usuario '{username}' no encontrado en la base de datos")
+                messagebox.showerror("Error", "Usuario no encontrado")
+                return
+
+            # Esta es la contraseña encriptada almacenada en la base de datos
+            encrypted_password = result[0]
+
+            try:
+                # Desencripta la contraseña almacenada en la base de datos
+                decrypted_password = self.fernet.decrypt(encrypted_password.encode('utf-8')).decode('utf-8')
+
+                # Comparar la contraseña proporcionada con la contraseña desencriptada
+                if password == decrypted_password:
                     if self.remember_me_var.get():
                         self.save_credentials(username, password)
                     messagebox.showinfo("Éxito", "Inicio de sesión exitoso")
@@ -134,15 +138,19 @@ class LoginGUI:
                 else:
                     self.audit_trail.log_action("Login", f"Usuario '{username}' ingresó una contraseña incorrecta")
                     messagebox.showerror("Error", "Contraseña incorrecta")
-            else:
-                self.audit_trail.log_action("Login", f"Usuario '{username}' no encontrado en la base de datos")
-                messagebox.showerror("Error", "Usuario no encontrado")
+
+            except Exception as decrypt_err:
+                self.audit_trail.log_action("Login",
+                                            f"Error al desencriptar la contraseña para el usuario '{username}': {decrypt_err}")
+                messagebox.showerror("Error", "No se pudo desencriptar la contraseña. Contacte al administrador.")
 
         except Exception as e:
             self.audit_trail.log_action("Login", f"Error en la autenticación para el usuario '{username}': {e}")
             messagebox.showerror("Error", f"Error al consultar la base de datos: {e}")
+
         finally:
-            conexion.close()
+            if conexion and conexion.is_connected():
+                conexion.close()
 
     def check_remembered_credentials(self):
         username, password = self.load_credentials()

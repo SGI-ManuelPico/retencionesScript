@@ -1,12 +1,12 @@
 import tkinter as tk
 from tkinter import messagebox
-from app_gui import AppGUI
-from db import ConexionDB
+from gui.app_gui import AppGUI
+from db.db import ConexionDB
 import bcrypt
 import os
 from cryptography.fernet import Fernet
 import json
-from audit_trail import LocalAuditTrail
+from audit.audit_trail import LocalAuditTrail
 
 
 class LoginGUI:

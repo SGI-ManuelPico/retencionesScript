@@ -37,9 +37,37 @@ class InsercionRetencionesIVA:
             self.conexion.close()
             print("Conexión cerrada.")
 
+    def obtener_registros_existentes(self):
+        """
+        Lee de la tabla retencionesiva todas las columnas (excepto 'id'),
+        para detectar si hay filas duplicadas completas.
+        
+        Retorna un set con tuplas de la forma:
+        (nit, detalle, ciudad, bimestre, year, montoOrigen, baseRetencion, valorRetenido, porcentaje)
+        """
+        query = """
+            SELECT
+                nit,
+                detalle,
+                ciudad,
+                bimestre,
+                year,
+                montoOrigen,
+                baseRetencion,
+                valorRetenido,
+                porcentaje
+            FROM retencionesiva
+        """
+        self.cursor.execute(query)
+        registros = self.cursor.fetchall()  # lista de tuplas
+        
+        # Convertimos a set para tener búsquedas rápidas
+        return set(registros)
+
     def insertar_datos(self, ruta_excel):
         """
-        Inserta datos desde un archivo Excel en la tabla retencionesiva.
+        Inserta datos desde un archivo Excel en la tabla retencionesiva,
+        comparando TODAS las columnas para evitar duplicados completos.
         
         Args:
             ruta_excel (str): Ruta al archivo Excel que contiene los datos a insertar.
@@ -51,14 +79,17 @@ class InsercionRetencionesIVA:
             # 1. Leer datos del Excel
             datos_excel = pd.read_excel(ruta_excel)
 
-            # 2. Reemplazar NaN por '' para evitar que aparezca 'nan' en consultas
+            # 2. Reemplazar NaN por '' para evitar problemas con 'nan'
             datos_excel.fillna('', inplace=True)
 
             # 3. Verificar/conectar a la base de datos
             if not self.conectar():
                 return False
 
-            # 4. Preparar la instrucción INSERT (sin incluir 'id', que es autoincrement)
+            # 4. Obtener registros completos existentes (todas las columnas)
+            registros_existentes = self.obtener_registros_existentes()
+
+            # 5. Preparar la instrucción INSERT (sin incluir 'id', que es autoincrement)
             query = """
                 INSERT INTO retencionesiva (
                     nit,
@@ -74,27 +105,39 @@ class InsercionRetencionesIVA:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
 
-            # 5. Crear la lista de valores según columnas del Excel
-            # Ajusta estos nombres según tu archivo (encabezados)
-            valores = []
+            # 6. Crear la lista de valores y descartar las filas que ya existen (completamente)
+            valores_a_insertar = []
             for _, fila in datos_excel.iterrows():
-                fila_valores = (
-                    fila["nit_proveedor"],    # nit
-                    fila["detalle"],          # detalle
-                    fila["ciudad"],           # ciudad
-                    fila["bimestre"],         # bimestre
-                    fila["anyo"],             # year
-                    fila["base_sometida"],    # montoOrigen
-                    fila["valor_iva"],        # baseRetencion
-                    fila["valor_retencion"],  # valorRetenido
-                    fila["porcentaje"]        # porcentaje
+                # Armar la tupla de TODAS las columnas (igual que en el SELECT)
+                clave = (
+                    fila["nit_proveedor"],
+                    fila["detalle"],
+                    fila["ciudad"],
+                    fila["bimestre"],
+                    fila["anyo"],
+                    fila["base_sometida"],
+                    fila["valor_iva"],
+                    fila["valor_retencion"],
+                    fila["porcentaje"]
                 )
-                valores.append(fila_valores)
 
-            # 6. Ejecutar inserción en lotes (más eficiente que un bucle con execute)
-            self.cursor.executemany(query, valores)
+                # Si la tupla está en registros_existentes, significa que
+                # ya existe una fila idéntica en la BD; la descartamos
+                if clave in registros_existentes:
+                    continue
 
-            # 7. Confirmar la transacción
+                # Si no está, la preparamos para insertar
+                valores_a_insertar.append(clave)
+
+            # 7. Si no hay nada por insertar, lo notificamos
+            if not valores_a_insertar:
+                print("No hay registros nuevos para insertar (todos eran duplicados).")
+                return True
+
+            # 8. Ejecutar la inserción en lotes
+            self.cursor.executemany(query, valores_a_insertar)
+
+            # 9. Confirmar la transacción
             self.conexion.commit()
             print("Datos insertados correctamente en la tabla retencionesiva.")
             return True
@@ -113,19 +156,21 @@ class InsercionRetencionesIVA:
             return False
 
         finally:
-            # Cerrar siempre la conexión y el cursor, ocurra o no un error
+            # Cerrar siempre la conexión y el cursor
             self.cerrar_conexion()
 
 
-# if __name__ == "__main__":
-#     # Ejemplo de uso
-#     db_config = {
-#         "host": "srv1182.hstgr.io",
-#         "user": "u438914854_contabilidad",
-#         "password": "RI8aiyvVRs4MY80",
-#         "database": "u438914854_contabilidad"
-#     }
 
-#     insercion = InsercionRetencionesIVA(db_config)
-#     if insercion.conectar():
-#         insercion.insertar_datos("RTE IVA 6 2024.xlsx")
+
+if __name__ == "__main__":
+    # Ejemplo de uso
+    db_config = {
+        "host": "srv1182.hstgr.io",
+        "user": "u438914854_contabilidad",
+        "password": "RI8aiyvVRs4MY80",
+        "database": "u438914854_contabilidad"
+    }
+
+    insercion = InsercionRetencionesIVA(db_config)
+    if insercion.conectar():
+        insercion.insertar_datos("RTE IVA 6 2024.xlsx")

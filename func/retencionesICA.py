@@ -34,10 +34,37 @@ class InsercionRetencionesICA:
             self.cursor.close()
         if self.conexion:
             self.conexion.close()
+            print("Conexión cerrada.")
+
+    def obtener_registros_existentes(self):
+        """
+        Obtiene de la tabla retencionesica todas las columnas que consideramos
+        para comparar y detectar duplicados (sin incluir 'id').
+        
+        Retorna un set de tuplas en el orden:
+        (nit, detalle, ciudad, bimestre, year, montoOrigen, valorRetenido, porcentaje)
+        """
+        consulta = """
+            SELECT
+                nit,
+                detalle,
+                ciudad,
+                bimestre,
+                year,
+                montoOrigen,
+                valorRetenido,
+                porcentaje
+            FROM retencionesica
+        """
+        self.cursor.execute(consulta)
+        registros = self.cursor.fetchall()  # Lista de tuplas
+        
+        return set(registros)
 
     def insertar_datos(self, ruta_excel):
         """
-        Inserta datos desde un archivo Excel en la tabla retencionesica.
+        Inserta datos desde un archivo Excel en la tabla retencionesica,
+        evitando insertar filas duplicadas completas (todas las columnas).
         
         Args:
             ruta_excel (str): Ruta al archivo Excel que contiene los datos a insertar.
@@ -56,7 +83,10 @@ class InsercionRetencionesICA:
             if not self.conectar():
                 return False
 
-            # 4. Preparar la consulta (sin incluir 'id', que es autoincrement)
+            # 4. Obtener los registros existentes (para filtrar duplicados)
+            registros_existentes = self.obtener_registros_existentes()
+
+            # 5. Preparar la consulta (sin incluir 'id', que es autoincrement)
             query = """
                 INSERT INTO retencionesica (
                     nit,
@@ -71,58 +101,68 @@ class InsercionRetencionesICA:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """
 
-            # 5. Crear la lista de valores (coincidiendo columna a columna)
-            # Ajusta aquí los nombres de columnas del Excel:
-            valores = []
+            # 6. Armar la lista de valores a insertar, descartando duplicados
+            valores_a_insertar = []
             for _, fila in datos_excel.iterrows():
-                fila_valores = (
-                    fila["nit_proveedor"],   # nit
-                    fila["detalle"],         # detalle
-                    fila["ciudad"],          # ciudad
-                    fila["bimestre"],        # bimestre
-                    fila["anyo"],            # year
-                    fila["base_sometida"],   # montoOrigen
-                    fila["valor_retencion"], # valorRetenido
-                    fila["porcentaje"]       # porcentaje
+                # Crear tupla con las columnas en el mismo orden que el SELECT
+                clave = (
+                    fila["nit_proveedor"],    # nit
+                    fila["detalle"],          # detalle
+                    fila["ciudad"],           # ciudad
+                    fila["bimestre"],         # bimestre
+                    fila["anyo"],             # year
+                    fila["base_sometida"],    # montoOrigen
+                    fila["valor_retencion"],  # valorRetenido
+                    fila["porcentaje"]        # porcentaje
                 )
-                valores.append(fila_valores)
 
-            # 6. Ejecutar la inserción en lotes
-            self.cursor.executemany(query, valores)
+                # Si la tupla 'clave' ya existe, significa que es duplicado
+                if clave in registros_existentes:
+                    continue
 
-            # 7. Confirmar los cambios
+                valores_a_insertar.append(clave)
+
+            # 7. Verificar si hay valores nuevos para insertar
+            if not valores_a_insertar:
+                print("No hay registros nuevos para insertar (todos eran duplicados).")
+                return True
+
+            # 8. Ejecutar la inserción en lotes
+            self.cursor.executemany(query, valores_a_insertar)
+
+            # 9. Confirmar los cambios
             self.conexion.commit()
             print("Datos insertados correctamente en la tabla retencionesica.")
             return True
 
         except Exception as e:
-            # 8. Si ocurre un error, revertimos la transacción
+            # 10. Si ocurre un error, revertimos la transacción
             if self.conexion:
                 self.conexion.rollback()
 
-            # 9. Manejo de excepciones específicas
+            # Manejo de excepciones específicas
             error_msg = str(e).lower()
             if "unknown column 'nan'" in error_msg:
-                print("ERROR: Parece que se está usando 'NaN' en una consulta SELECT o similar.")
-                print("Revisa triggers o consultas externas que puedan estar usando valores no válidos.")
+                print("ERROR: Se está usando 'NaN' en una consulta SELECT o similar (tal vez un trigger).")
             else:
                 print("Error al insertar datos en retencionesica:", e)
 
             return False
 
         finally:
-            # 10. Cerrar la conexión a la base de datos pase lo que pase
+            # 11. Cerrar la conexión a la base de datos pase lo que pase
             self.cerrarConexion()
 
-# if __name__ == "__main__":
-#     # Ejemplo de uso
-#     db_config = {
-#         "host": "srv1182.hstgr.io",
-#         "user": "u438914854_contabilidad",
-#         "password": "RI8aiyvVRs4MY80",
-#         "database": "u438914854_contabilidad"
-#     }
 
-#     insercion = InsercionRetencionesICA(db_config)
-#     if insercion.conectar():
-#         insercion.insertar_datos("RTE ICA 6 2024.xlsx")
+if __name__ == "__main__":
+    # Ejemplo de uso
+    db_config = {
+        "host": "srv1182.hstgr.io",
+        "user": "u438914854_contabilidad",
+        "password": "RI8aiyvVRs4MY80",
+        "database": "u438914854_contabilidad"
+    }
+
+    insercion = InsercionRetencionesICA(db_config)
+    if insercion.conectar():
+        insercion.insertar_datos("RTE ICA 6 2024.xlsx")

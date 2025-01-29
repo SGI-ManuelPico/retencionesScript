@@ -76,20 +76,15 @@ class InsercionRetencionesIVA:
             bool: True si los datos se insertaron correctamente, False de lo contrario.
         """
         try:
-            # 1. Leer datos del Excel
             datos_excel = pd.read_excel(ruta_excel)
-
-            # 2. Reemplazar NaN por '' para evitar problemas con 'nan'
             datos_excel.fillna('', inplace=True)
 
-            # 3. Verificar/conectar a la base de datos
+
             if not self.conectar():
                 return False
-
-            # 4. Obtener registros completos existentes (todas las columnas)
+            
             registros_existentes = self.obtener_registros_existentes()
 
-            # 5. Preparar la instrucción INSERT (sin incluir 'id', que es autoincrement)
             query = """
                 INSERT INTO retencionesiva (
                     nit,
@@ -105,10 +100,8 @@ class InsercionRetencionesIVA:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
 
-            # 6. Crear la lista de valores y descartar las filas que ya existen (completamente)
             valores_a_insertar = []
             for _, fila in datos_excel.iterrows():
-                # Armar la tupla de TODAS las columnas (igual que en el SELECT)
                 clave = (
                     fila["nit_proveedor"],
                     fila["detalle"],
@@ -121,29 +114,20 @@ class InsercionRetencionesIVA:
                     fila["porcentaje"]
                 )
 
-                # Si la tupla está en registros_existentes, significa que
-                # ya existe una fila idéntica en la BD; la descartamos
                 if clave in registros_existentes:
                     continue
-
-                # Si no está, la preparamos para insertar
                 valores_a_insertar.append(clave)
 
-            # 7. Si no hay nada por insertar, lo notificamos
             if not valores_a_insertar:
                 print("No hay registros nuevos para insertar (todos eran duplicados).")
                 return True
 
-            # 8. Ejecutar la inserción en lotes
             self.cursor.executemany(query, valores_a_insertar)
-
-            # 9. Confirmar la transacción
             self.conexion.commit()
             print("Datos insertados correctamente en la tabla retencionesiva.")
             return True
 
         except Exception as e:
-            # Si algo falla, revertimos cualquier inserción parcial
             if self.conexion:
                 self.conexion.rollback()
             
@@ -156,14 +140,12 @@ class InsercionRetencionesIVA:
             return False
 
         finally:
-            # Cerrar siempre la conexión y el cursor
             self.cerrar_conexion()
 
 
 
 
 if __name__ == "__main__":
-    # Ejemplo de uso
     db_config = {
         "host": "srv1182.hstgr.io",
         "user": "u438914854_contabilidad",

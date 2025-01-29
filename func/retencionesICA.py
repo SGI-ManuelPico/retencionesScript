@@ -36,7 +36,7 @@ class InsercionRetencionesICA:
             self.conexion.close()
             print("Conexión cerrada.")
 
-    def obtener_registros_existentes(self):
+    def obtenerRegistrosExistentes(self):
         """
         Obtiene de la tabla retencionesica todas las columnas que consideramos
         para comparar y detectar duplicados (sin incluir 'id').
@@ -61,7 +61,7 @@ class InsercionRetencionesICA:
         
         return set(registros)
 
-    def insertar_datos(self, ruta_excel):
+    def insertarDatos(self, ruta_excel):
         """
         Inserta datos desde un archivo Excel en la tabla retencionesica,
         evitando insertar filas duplicadas completas (todas las columnas).
@@ -73,20 +73,15 @@ class InsercionRetencionesICA:
             bool: True si los datos se insertaron correctamente, False de lo contrario.
         """
         try:
-            # 1. Leer datos del Excel
-            datos_excel = pd.read_excel(ruta_excel)
 
-            # 2. Reemplazar NaN por cadena vacía para evitar que se use 'NaN' en consultas
+            datos_excel = pd.read_excel(ruta_excel)
             datos_excel.fillna('', inplace=True)
 
-            # 3. Conectar a la base de datos
             if not self.conectar():
                 return False
+            
+            registros_existentes = self.obtenerRegistrosExistentes()
 
-            # 4. Obtener los registros existentes (para filtrar duplicados)
-            registros_existentes = self.obtener_registros_existentes()
-
-            # 5. Preparar la consulta (sin incluir 'id', que es autoincrement)
             query = """
                 INSERT INTO retencionesica (
                     nit,
@@ -101,7 +96,6 @@ class InsercionRetencionesICA:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """
 
-            # 6. Armar la lista de valores a insertar, descartando duplicados
             valores_a_insertar = []
             for _, fila in datos_excel.iterrows():
                 # Crear tupla con las columnas en el mismo orden que el SELECT
@@ -115,28 +109,20 @@ class InsercionRetencionesICA:
                     fila["valor_retencion"],  # valorRetenido
                     fila["porcentaje"]        # porcentaje
                 )
-
-                # Si la tupla 'clave' ya existe, significa que es duplicado
                 if clave in registros_existentes:
                     continue
 
                 valores_a_insertar.append(clave)
-
-            # 7. Verificar si hay valores nuevos para insertar
             if not valores_a_insertar:
                 print("No hay registros nuevos para insertar (todos eran duplicados).")
                 return True
-
-            # 8. Ejecutar la inserción en lotes
             self.cursor.executemany(query, valores_a_insertar)
-
-            # 9. Confirmar los cambios
             self.conexion.commit()
             print("Datos insertados correctamente en la tabla retencionesica.")
             return True
 
         except Exception as e:
-            # 10. Si ocurre un error, revertimos la transacción
+            # Si ocurre un error, revertimos la transacción
             if self.conexion:
                 self.conexion.rollback()
 
@@ -150,7 +136,6 @@ class InsercionRetencionesICA:
             return False
 
         finally:
-            # 11. Cerrar la conexión a la base de datos pase lo que pase
             self.cerrarConexion()
 
 
@@ -165,4 +150,4 @@ if __name__ == "__main__":
 
     insercion = InsercionRetencionesICA(db_config)
     if insercion.conectar():
-        insercion.insertar_datos("RTE ICA 6 2024.xlsx")
+        insercion.insertarDatos("RTE ICA 6 2024.xlsx")

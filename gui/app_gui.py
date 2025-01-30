@@ -1,8 +1,8 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from util.util import validar_datos
-from func.retencionesICA import InsercionRetencionesICA
-from func.retencionesIVA import InsercionRetencionesIVA
+from retencionesICA import InsercionRetencionesICA
+from retencionesIVA import InsercionRetencionesIVA
 from audit.audit_trail import LocalAuditTrail
 import pandas as pd
 import time

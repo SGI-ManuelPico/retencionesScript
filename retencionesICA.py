@@ -1,5 +1,5 @@
 import pandas as pd
-from db.db import ConexionDB
+from db import ConexionDB
 
 class InsercionRetencionesICA:
     def __init__(self, db_config):
@@ -139,15 +139,15 @@ class InsercionRetencionesICA:
             self.cerrarConexion()
 
 
-# if __name__ == "__main__":
-#     # Ejemplo de uso
-#     db_config = {
-#         "host": "srv1182.hstgr.io",
-#         "user": "u438914854_contabilidad",
-#         "password": "RI8aiyvVRs4MY80",
-#         "database": "u438914854_contabilidad"
-#     }
+if __name__ == "__main__":
+    # Ejemplo de uso
+    db_config = {
+        "host": "srv1182.hstgr.io",
+        "user": "u438914854_contabilidad",
+        "password": "RI8aiyvVRs4MY80",
+        "database": "u438914854_contabilidad"
+    }
 
-#     insercion = InsercionRetencionesICA(db_config)
-#     if insercion.conectar():
-#         insercion.insertarDatos("RTE ICA 6 2024.xlsx")
+    insercion = InsercionRetencionesICA(db_config)
+    if insercion.conectar():
+        insercion.insertarDatos("RTE ICA AÑO 2024.xlsx")

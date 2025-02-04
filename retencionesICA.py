@@ -150,4 +150,4 @@ if __name__ == "__main__":
 
     insercion = InsercionRetencionesICA(db_config)
     if insercion.conectar():
-        insercion.insertarDatos("RTE ICA AÑO 2024.xlsx")
+        insercion.insertarDatos("RTE ICA AÑO 2024 1.xlsx")

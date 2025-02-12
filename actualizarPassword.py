@@ -14,9 +14,7 @@ cursor = conn.cursor()
 
 def actualizar_password(nit, nuevo_password):
     try:
-        # Genera el hash y lo decodifica a string
         hashed_password = bcrypt.hashpw(nuevo_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        # Asegúrate que la columna sea la correcta (nit o id)
         query = "UPDATE proveedor SET password = %s WHERE id = %s"
         cursor.execute(query, (hashed_password, nit))
         conn.commit()

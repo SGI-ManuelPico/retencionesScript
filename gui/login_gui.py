@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 from gui.app_gui import AppGUI
-from db.db import ConexionDB
+from db import ConexionDB
 import bcrypt
 import os
 from cryptography.fernet import Fernet

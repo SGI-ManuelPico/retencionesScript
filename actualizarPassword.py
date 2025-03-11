@@ -29,6 +29,6 @@ def actualizar_password(nit, nuevo_password):
         conn.close()
 
 if __name__ == "__main__":
-    nit = 901038518
-    nuevo_password = '901038518'
+    nit = 844003380
+    nuevo_password = '844003380'
     actualizar_password(nit, nuevo_password)

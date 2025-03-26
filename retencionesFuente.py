@@ -114,4 +114,4 @@ if __name__ == "__main__":
     }
 
     insercion = InsercionRetencionesFuente(db_config)
-    insercion.insertarDatos("RTEFUENTE  AÑO  2024.xlsx")
+    insercion.insertarDatos("RTEFUENTE AÑO 2024.xlsx")
